@@ -1,0 +1,62 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+
+group = 'org.azatsh.dbpasswordchange'
+version = "${version}"
+sourceCompatibility = '1.8'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    lombokVersion = '1.18.8'
+    packageDir = "${projectDir}/package"
+    extractedPackageDir = "${projectDir}/package/${project.name}-v${version}"
+}
+
+dependencies {
+    compileOnly("org.projectlombok:lombok:${lombokVersion}")
+    annotationProcessor("org.projectlombok:lombok:${lombokVersion}")
+
+    // jdbc drivers must be provided at runtime
+    runtime 'com.oracle.database.jdbc:ojdbc8:19.8.0.0'
+
+    compile("org.slf4j:slf4j-api:1.7.30")
+    compile("org.apache.logging.log4j:log4j-slf4j-impl:2.13.3")
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'org.azatsh.dbpasswordchange.Main'
+        )
+    }
+}
+
+clean {
+    delete "${packageDir}"
+}
+
+build {
+    doLast {
+        copy {
+            from jar // application itself
+            from configurations.runtime // dependencies
+            into "${extractedPackageDir}/libs"
+        }
+        copy {
+            from "${projectDir}/src/main/files" // scripts, configs, etc.
+            from "${projectDir}/LICENSE"
+            into "${extractedPackageDir}"
+        }
+    }
+}
+
+// task to build and package release to a zip
+task buildPackage(type: Zip) {
+    dependsOn build
+    archiveFileName = "${project.name}-v${version}.zip"
+    destinationDirectory = file("${packageDir}")
+    from "${extractedPackageDir}"
+}
